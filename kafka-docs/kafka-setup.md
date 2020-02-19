@@ -1,16 +1,15 @@
 ##  环境搭建
-### jdk
-/etc/profile
+### 环境变量
 ```sh
 export JAVA_HOME=
 export ZOOKEEPER_HOME=
 export PATH=$PATH:$JAVA_HOME/bin
-export PATH=$PATH:$HADOOP_HOME/bin
 ```
 ```sh
 source /etc/profile
 ```
 
+### zookeeper
 zoo.cfg
 ```sh
 # ZooKeeper 服务器心跳时间，单位为 ms
@@ -31,6 +30,7 @@ zkServer.sh start
 zkServer.sh status
 ```
 
+### kafka
 server.properties
 ```sh
 # broker 的编号，如果集群中有多个 broker，则每个 broker 的编号需要设置的不同
@@ -52,7 +52,8 @@ zookeeper.connect=node01:2181,node02:2181,node03:2181/kafka
 
 `message.max.bytes`: broker 所能接收消息的最大值，默认值为 1000012B
 
-## 脚本命令
+
+## 环境测试
 启动 kafka
 ```sh
 kafka-server-start.sh server.properties
@@ -79,6 +80,13 @@ kafka-console-producer.sh --broker-list node01:9092 --topic topic-demo
 # --from-beginning
 kafka-console-consumer.sh --bootstrap-server node01:9092 --topic topic-demo
 ```
+
+
+
+
+
+
+
 
 ## broker 重要配置
 ### log.dirs

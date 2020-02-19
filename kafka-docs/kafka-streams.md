@@ -37,6 +37,16 @@ curl -H "Content-Type:application/json" -H "Accept:application/json" http://loca
 ```
 
 ### Kafka Streams
+Kafka Streams 是一个用于处理和分析数据的客户端库。它先把存储在 Kafka 中的数据进行处理和分析，然后将最终所得的数据结果回写到 Kafka 或发送到外部系统
+
+Kafka Streams 直接解决了流式处理中的很多问题：
+1. 毫秒级延迟的逐个事件处理
+2. 有状态的处理，包括连接和聚合类操作
+3. 提供了必要的流处理原语，包括高级流处理 DSL 和低级处理器 API。高级流处理 DSL 提供了常用流处理变换操作，低级处理器 API 支持客户端自定义处理器并与状态仓库交互
+4. 使用类似 DataFlow 的模型对无序数据进行窗口化处理
+5. 具有快速故障切换的分布式处理和容错能力
+6. 无停机滚动部署
+
 ```xml
 <dependency>
     <groupId>org.apache.kafka</groupId>
@@ -45,25 +55,33 @@ curl -H "Content-Type:application/json" -H "Accept:application/json" http://loca
 </dependency>
 ```
 实时读取 access_log 主题，每 2 秒计算一次 ios 端和 android 端请求的总数，并把这些数据写入到 os-check 主题中
+
+1. KStream 是一个由键值对构成的抽象记录流，每个键值对是一个独立单元，即使相同的 key 也不会被覆盖
+2. KTable 是一个基于表主键的日志更新流，相同 key 的每条记录只保存最新的一条记录
 ```java
 public class OSCheckStreaming {
 
     public static void main(String[] args) {
         Properties props = new Properties();
+
+        // 在整个 Kafka 集群中，applicationId 必须唯一
         props.put(StreamsConfig.APPLICATION_ID_CONFIG, "os-check-streams");
         props.put(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:9092");
         props.put(StreamsConfig.DEFAULT_KEY_SERDE_CLASS_CONFIG, Serdes.String().getClass());
         props.put(StreamsConfig.DEFAULT_VALUE_SERDE_CLASS_CONFIG, Serdes.String().getClass());
         props.put(StreamsConfig.DEFAULT_WINDOWED_KEY_SERDE_INNER_CLASS, Serdes.StringSerde.class.getName());
 
+        // 创建 KStream 实例，输入主题为 access_log
         final Gson gson = new Gson();
         final StreamsBuilder builder = new StreamsBuilder();
-
         KStream<String, String> source = builder.stream("access_log");
+
         source.mapValues(value -> gson.fromJson(value, LogLine.class)).mapValues(LogLine::getPayload)
                 .groupBy((key, value) -> value.contains("ios") ? "ios" : "android")
                 .windowedBy(TimeWindows.of(Duration.ofSeconds(2L)))
                 .count()
+
+                // 将统计结果写入输出主题
                 .toStream()
                 .to("os-check", Produced.with(WindowedSerdes.timeWindowedSerdeFrom(String.class), Serdes.Long()));
 
@@ -163,3 +181,8 @@ public final class WordCountDemo {
     }
 }
 ```
+
+
+
+
+
