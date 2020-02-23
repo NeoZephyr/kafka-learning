@@ -1,4 +1,4 @@
-## 生产与消费
+ ## 生产与消费
 ### 生产消息
 ```sh
 kafka-console-producer.sh --broker-list kafka-host:port --topic test-topic --request-required-acks -1 --producer-property compression.type=lz4
@@ -12,8 +12,12 @@ kafka-console-consumer.sh --bootstrap-server kafka-host:port --topic test-topic 
 ### 测试生产者性能
 ```sh
 # 发送 1 千万条消息，每条消息大小是 1KB
+
+# throughput 参数用来进行限流控制，当设定的值小于 0 时不限流
+# 当设定的值大于 0 时，如果发送的吞吐量大于该值时就会被阻塞一段时间
 kafka-producer-perf-test.sh --topic test-topic --num-records 10000000 --throughput -1 --record-size 1024 --producer-props bootstrap.servers=kafka-host:port acks=-1 linger.ms=2000 compression.type=lz4
 ```
+kafka-producer-perf-test.sh 脚本中有一个参数 print-metrics，指定了这个参数时会在测试完成之后打印指标信息
 
 ### 测试消费者性能
 ```sh

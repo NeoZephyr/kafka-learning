@@ -113,12 +113,12 @@ Kafka 采用基于领导者（Leader-based）的副本机制
 
 1. 在 Kafka 中，副本分成两类：领导者副本（Leader Replica）和追随者副本（Follower Replica）。每个分区在创建时都要选举一个领导者副本，其余的副本自动称为追随者副本
 
-2. 在 Kafka 中，追随者副本不对外提供服务。这就是说，所有的读写请求都必须 发往领导者副本所在的 Broker，由该 Broker 负责处理。追随者副本唯一的任务就是从领导者副本异步拉取消息，并写入到自己的提交日志中，从而实现与领导者副本的同步
+2. 在 Kafka 中，追随者副本不对外提供服务。这就是说，所有的读写请求都必须发往领导者副本所在的 Broker，由该 Broker 负责处理。追随者副本唯一的任务就是从领导者副本异步拉取消息，并写入到自己的提交日志中，从而实现与领导者副本的同步
 
 3. 当领导者副本所在的 Broker 宕机时，Kafka 依托于 ZooKeeper 提供的监控功能实时感知到，并立即开启新一轮的领导者选举，从追随者副本中选一个作为新的领导者。当原 Leader 副本重启回来后，只能作为追随者副本加入到集群中
 
 这种副本机制有以下优势：
-1. 当生产者 向 Kafka 成功写入消息后，消费者马上就能读取刚才生产的消息。如果允许追随者副本对外提供服务，由于副本同步是异步的，因此有可能出现追随者副本还没有从领导者副本那里拉取到最新的消息，从而使得客户端看不到最新写入的消息
+1. 当生产者向 Kafka 成功写入消息后，消费者马上就能读取刚才生产的消息。如果允许追随者副本对外提供服务，由于副本同步是异步的，因此有可能出现追随者副本还没有从领导者副本那里拉取到最新的消息，从而使得客户端看不到最新写入的消息
 
 2. 方便实现单调读，如果允许追随者副本提供读服务，可能会看到这样的现象：第一次消费时看到的最新消息在第二次消费时不见了
 
@@ -132,12 +132,7 @@ Kafka 判断 Follower 是否与 Leader 同步的标准就是 Broker 端参数 `r
 ### Unclean 领导者选举
 ISR 可能出现为空的现象，Kafka 需要重新选举一个新的 Leader。此时如果选择非同步副本作为新 Leader，就可能出现数据的丢失。Broker 端参数 `unclean.leader.election.enable` 控制是否允许 Unclean 领导者选举
 
-开启 Unclean 领导者选举可能会造成数据丢失，但好处是，它使得分区 Leader 副本一直存在，不至于停止对外提供服务，因此提升了高可用性。反之，禁止 Unclean 领导者选举的好处在于维护了数据的一致性，避免了消息丢失，但牺牲了高可用性
-
-建议你不要开启 Unclean 领导者选举
-
-
-
+开启 Unclean 领导者选举可能会造成数据丢失，但好处是，它使得分区 Leader 副本一直存在，不至于停止对外提供服务，因此提升了高可用性。反之，禁止 Unclean 领导者选举的好处在于维护了数据的一致性，避免了消息丢失，但牺牲了高可用性。建议不要开启 Unclean 领导者选举
 
 ### 优先副本
 优先副本是指在 AR 集合列表中的第一个副本。理想情况下，优先副本就是该分区的 leader 副本，也就是 preferred leader。Kafka 要确保所有主题的优先副本在 Kafka 集群中均匀分布，这样就保证了所有分区的 leader 均衡分布
@@ -154,128 +149,32 @@ Kafka 中 kafka-perferred-replica-election.sh 脚本提供了对分区 leader �
 ```sh
 kafka-preferred-replica-election.sh --zookeeper localhost:2181/kafka
 ```
-```sh
-kafka-topics.sh --zookeeper localhost:2181/kafka --describe --topic customer-delete
-```
-在脚本执行之后，主题 customer-delete 中的所有的优先副本都成为 leader 副本
 
 leader 副本的转移是一项高成本的工作，如果要执行的分区数很多，那么必然会对客户端造成一定的影响。如果集群中包含大量的分区，那么使用上面的方法有可能会失效。在优先副本的选举过程中，具体的元数据信息会被存入 ZooKeeper 的 /admin/preferred_replica_election 节点，如果这些数据超过了 ZooKeeper 节点所允许的大小，那么选举就会失败。默认情况下 ZooKeeper 所允许的节点数据大小为 1MB
 
 kafka-perferred-replica-election.sh 脚本中还提供了 path-to-json-file 参数来小批量地对部分分区执行优先副本的选举操作。通过 path-to-json-file 参数来指定一个 JSON 文件，这个 JSON 文件里保存需要执行优先副本选举的分区清单
 
-只对主题 customer-delete 执行优先副本的选举操作，那么先创建一个 JSON 文件，文件名为 election.json，文件内容如下：
+只对主题 topic_name 执行优先副本的选举操作，那么先创建一个 JSON 文件，文件名为 election.json，文件内容如下：
 ```
 {
     "partitions":[
         {
             "partition":0,
-            "topic":"topic-partitions"
+            "topic":"topic_name"
         },
         {
             "partition":1,
-            "topic":"topic-partitions"
+            "topic":"topic_name"
         },
         {
             "partition":2,
-            "topic":"topic-partitions"
+            "topic":"topic_name"
         }
     ]
 }
 ```
-
-```
+```sh
 kafka-preferred-replica-election.sh --zookeeper localhost:2181/kafka --path-to-json-file election.json
 ```
 
 在实际生产环境中，一般使用 path-to-json-file 参数来分批、手动地执行优先副本的选举操作。尤其是在应对大规模的 Kafka 集群时，理应杜绝采用非 path-to-json-file 参数的选举操作方式。同时，优先副本的选举操作也要注意避开业务高峰期，以免带来性能方面的负面影响
-
-
-
-
-
-### 复制限流
-数据复制会占用额外的资源，如果重分配的量太大会严重影响整体的性能，尤其是处于业务高峰期的时候。减小重分配的粒度，以小批次的方式来操作是一种可行的解决思路。但是，如果集群中某个主题或某个分区的流量在某段时间内特别大，那么只靠减小粒度是不足以应对的，这时就需要有一个限流的机制，对副本间的复制流量加以限制来保证重分配期间整体服务不会受太大的影响
-
-副本间的复制限流有两种实现方式：kafka-config.sh 脚本和 kafka-reassign-partitions.sh 脚本
-
-kafka-config.sh 脚本主要以动态配置的方式来达到限流的目的
-
-在 broker 级别有两个与复制限流相关的配置参数：follower.replication.throttled.rate 和 leader.replication.throttled.rate，前者用于设置 follower 副本复制的速度，后者用于设置 leader 副本传输的速度，单位都是 B/s。通常情况下，两者的配置值是相同的
-
-```sh
-kafka-configs.sh --zookeeper localhost:2181/kafka --entity-type brokers --entity-name 1 --alter --add-config follower.replication.throttled.rate=1024,leader.replication.throttled.rate=1024
-```
-```sh
-kafka-configs.sh --zookeeper localhost:2181/kafka --entity-type brokers --entity-name 1 --describe
-```
-
-在主题级别也有两个相关的参数来限制复制的速度：leader.replication.throttled.replicas 和 follower.replication.throttled.replicas，它们分别用来配置被限制速度的主题所对应的 leader 副本列表和 follower 副本列表
-
-```sh
-kafka-configs.sh --zookeeper localhost:2181/kafka --entity-type topics --entity-name customer-delete --alter --add-config leader.replication.throttled.replicas=[0:0,1:1,2:2],follower.replication.throttled.replicas=[0:1,1:2,2:0]
-```
-
-带有限流的分区重分配的用法
-```
-{
-    "version":1,
-    "partitions":[
-        {
-            "topic":"customer-delete",
-            "partition":1,
-            "replicas":[2,0],
-            "log_dirs":["any","any"]
-        },
-        {
-            "topic":"customer-delete",
-            "partition":0,
-            "replicas":[0,2],
-            "log_dirs":["any","any"]
-        },
-        {
-            "topic":"customer-delete",
-            "partition":2,
-            "replicas":[0,2],
-            "log_dirs":["any","any"]
-        }
-    ]
-}
-```
-
-如果分区重分配会引起某个分区 AR 集合的变更，那么这个分区中与 leader 有关的限制会应用于重分配前的所有副本，因为任何一个副本都可能是 leader，而与 follower 有关的限制会应用于所有移动的目的地
-
-```sh
-kafka-configs.sh --zookeeper localhost:2181/kafka --entity-type topics --entity-name customer-delete --alter --add-config leader.replication.throttled.replicas=[1:1,1:2,0:0,0:1],follower.replication.throttled.replicas=[1:0,0:2]
-```
-
-再设置 broker 2 的复制速度为 10B/s
-```sh
-kafka-configs.sh --zookeeper localhost:2181/kafka --entity-type brokers --entity-name 2 --alter --add-config follower.replication.throttled.rate=10,leader.replication.throttled.rate=10
-```
-
-```sh
-kafka-reassign-partitions.sh --zookeeper localhost:2181/kafka --execute --reassignment-json-file project.json
-```
-
-配合 verify 参数，对临时设置的一些限制性的配置在使用完后进行删除
-```sh
-kafka-reassign-partitions.sh --zookeeper localhost:2181/kafka --verify --reassignment-json-file project.json
-```
-
-
-kafka-reassign-partitions.sh 脚本本身也提供了限流的功能
-
-```sh
-kafka-reassign-partitions.sh --zookeeper localhost:2181/kafka --execute --reassignment-json-file project.json --throttle 10
-```
-
-需要周期性地执行查看进度的命令直到重分配完成，这样可以确保限流设置被移除。也就是说，使用这种方式的限流同样需要显式地执行某些操作以使在重分配完成之后可以删除限流的设置
-
-在重分配期间修改限制来增加吞吐量，以便完成得更快
-```sh
-kafka-reassign-partitions.sh --zookeeper localhost:2181/kafka --execute --reassignment-json-file project.json  --throttle 1024
-```
-
-推荐使用 kafka-reassign-partitions.sh 脚本配合 throttle 参数的方式进行复制限流
-
-

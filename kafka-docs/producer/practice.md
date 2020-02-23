@@ -186,3 +186,183 @@ producer.send(record2, callback2);
 ## 关闭客户端
 `close()` 方法会阻塞等待之前所有的发送请求完成后再关闭 KafkaProducer。与此同时，KafkaProducer 还提供了一个带超时时间的 `close()` 方法。如果调用了带超时时间 timeout 的 `close()` 方法，那么只会在等待 timeout 时间内来完成所有尚未完成的请求处理，然后强行退出。在实际应用中，一般使用的都是无参的 `close()` 方法
 
+
+
+
+```java
+public class HashPartitioner implements Partitioner {
+    public HashPartitioner(VerifiableProperties verifiableProperties) {}
+
+    public int partition(Object key, int numPartitions) {
+        if ((key instanceof Integer)) {
+            return Math.abs(Integer.parseInt(key.toString())) % numPartitions;
+        }
+        return Math.abs(key.hashCode() % numPartitions);
+    }
+}
+
+public class RoundRobinPartitioner implements Partitioner {
+    private static AtomicLong next = new AtomicLong();
+
+    public RoundRobinPartitioner(VerifiableProperties verifiableProperties) {}
+
+    public int partition(Object key, int numPartitions) {
+        long nextIndex = next.incrementAndGet();
+        return (int)nextIndex % numPartitions;
+    }
+}
+```
+```java
+public class ProducerDemo {
+
+  static private final String TOPIC = "topic1";
+  static private final String ZOOKEEPER = "localhost:2181";
+  static private final String BROKER_LIST = "localhost:9092";
+//  static private final int PARTITIONS = TopicAdmin.partitionNum(ZOOKEEPER, TOPIC);
+  static private final int PARTITIONS = 3;
+
+
+  public static void main(String[] args) throws Exception {
+    Producer<String, String> producer = initProducer();
+    sendOne(producer, TOPIC);
+  }
+
+  private static Producer<String, String> initProducer() {
+    Properties props = new Properties();
+    props.put("metadata.broker.list", BROKER_LIST);
+    // props.put("serializer.class", "kafka.serializer.StringEncoder");
+    props.put("serializer.class", StringEncoder.class.getName());
+    props.put("partitioner.class", HashPartitioner.class.getName());
+    // props.put("partitioner.class", "kafka.producer.DefaultPartitioner");
+//    props.put("compression.codec", "0");
+    props.put("producer.type", "async");
+    props.put("batch.num.messages", "3");
+    props.put("queue.buffer.max.ms", "10000000");
+    props.put("queue.buffering.max.messages", "1000000");
+    props.put("queue.enqueue.timeout.ms", "20000000");
+
+    ProducerConfig config = new ProducerConfig(props);
+    Producer<String, String> producer = new Producer<String, String>(config);
+    return producer;
+  }
+
+  public static void sendOne(Producer<String, String> producer, String topic) throws InterruptedException {
+    KeyedMessage<String, String> message1 = new KeyedMessage<String, String>(topic, "31", "test 31");
+    producer.send(message1);
+    Thread.sleep(5000);
+    KeyedMessage<String, String> message2 = new KeyedMessage<String, String>(topic, "31", "test 32");
+    producer.send(message2);
+    Thread.sleep(5000);
+    KeyedMessage<String, String> message3 = new KeyedMessage<String, String>(topic, "31", "test 33");
+    producer.send(message3);
+    Thread.sleep(5000);
+    KeyedMessage<String, String> message4 = new KeyedMessage<String, String>(topic, "31", "test 34");
+    producer.send(message4);
+    Thread.sleep(5000);
+    KeyedMessage<String, String> message5 = new KeyedMessage<String, String>(topic, "31", "test 35");
+    producer.send(message5);
+    Thread.sleep(5000);
+    producer.close();
+  }
+}
+```
+```java
+public class DemoConsumer {
+
+  /**
+   * @param args
+   */
+  public static void main(String[] args) {
+     args = new String[]{"localhost:2181", "topic1", "group1", "consumer1"};
+    if (args == null || args.length != 4) {
+      System.err.print(
+          "Usage:\n\tjava -jar kafka_consumer.jar ${zookeeper_list} ${topic_name} ${group_name} ${consumer_id}");
+      System.exit(1);
+    }
+    String zk = args[0];
+    String topic = args[1];
+    String groupid = args[2];
+    String consumerid = args[3];
+    Properties props = new Properties();
+    props.put("zookeeper.connect", zk);
+    props.put("group.id", groupid);
+    props.put("autooffset.reset", "largest");
+    props.put("autocommit.enable", "true");
+    props.put("client.id", "test");
+    props.put("auto.commit.interval.ms", "1000");
+
+    ConsumerConfig consumerConfig = new ConsumerConfig(props);
+    ConsumerConnector consumerConnector = Consumer.createJavaConsumerConnector(consumerConfig);
+
+    Map<String, Integer> topicCountMap = new HashMap<String, Integer>();
+    topicCountMap.put(topic, 1);
+    Map<String, List<KafkaStream<byte[], byte[]>>> consumerMap =
+        consumerConnector.createMessageStreams(topicCountMap);
+
+    KafkaStream<byte[], byte[]> stream1 = consumerMap.get(topic).get(0);
+    ConsumerIterator<byte[], byte[]> it1 = stream1.iterator();
+    while (it1.hasNext()) {
+      MessageAndMetadata<byte[], byte[]> messageAndMetadata = it1.next();
+      String message =
+          String.format("Consumer ID:%s, Topic:%s, GroupID:%s, PartitionID:%s, Offset:%s, Message Key:%s, Message Payload: %s",
+              consumerid,
+              messageAndMetadata.topic(), groupid, messageAndMetadata.partition(),
+              messageAndMetadata.offset(), new String(messageAndMetadata.key()),new String(messageAndMetadata.message()));
+      System.out.println(message);
+    }
+  }
+}
+```
+
+同步发送消息，返回 RecordMetaData 对象，包含了主键和分区信息
+```java
+ProducerRecord<String, String> record = new ProducerRecord<>("topic", "key", "value");
+
+try {
+    producer.send(record).get();
+} catch (Exception e) {
+    e.printStackTrace();
+}
+```
+异步发送消息
+```java
+private class ProducerCallback implements Callback {
+    public void onCompletion(RecordMetadata RecordMetadata, Exception e) {
+        if (e != null) {
+            e.printStackTrace();
+        }
+    }
+}
+
+ProducerRecord<String, String> record = new ProducerRecord<>("topic", "key", "value");
+producer.send(record, new ProducerCallback());
+```
+
+ProducerRecord 对象中的键有两个用途，可以作为消息的附加信息，也可以用来决定消息写入主题对应的分区。如果键值为 null，就使用了默认的分区器，那么 ProducerRecord 将会被随机地发送到主题内各个可用的分区上。分区器使用轮询的算法将消息均衡地分布到各个分区上；如果键不为空，并且使用了默认的分区器，则会对键进行散列，根据散列值把消息映射到对应分区。
+
+自定义分区器
+```java
+public class MyPartitioner implements Partitioner {
+    public void configure(Map<String, ?> configs) {}
+
+    public int partition(String topic, Object key, byte[] keyBytes,
+        Object value, byte[] valueBytes, Cluster cluster) {
+        List<PartitionInfo> partions = cluster.partitionsForTopic(topic);
+
+        int numPartitions = partions.size();
+
+        if ((keyBytes == null) || (!(key instanceof String))) {
+            throw new InvalidRecordException("...");
+        }
+
+        // 分配到最后一个分区
+        if (((String) key).equals("pain"))
+            return numPartitions;
+
+        // 分配到其它分区
+        return (Math.abs(Utils.murmur2(keyBytes)) % (numPartitions - 1))
+    }
+
+    public void close() {}
+}
+```
