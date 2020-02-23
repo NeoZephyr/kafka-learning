@@ -19,6 +19,7 @@ rest.host.name=localhost
 # 端口
 rest.port=8083
 ```
+
 启动 Connect
 ```sh
 bin/connect-distributed.sh config/connect-distributed.properties
@@ -31,6 +32,7 @@ bin/connect-distributed.sh config/connect-distributed.properties
 ```sh
 curl http://localhost:8083/connectors
 ```
+
 添加 File Connector。该 Connector 读取指定的文件，并为每一行文本创建一条消息，并发送到特定的 Kafka 主题上。Connector 类是 Kafka 默认提供的 FileStreamSourceConnector。要读取的日志文件在 /var/log 目录下，要发送到 Kafka 的主题名称为 access_log
 ```
 curl -H "Content-Type:application/json" -H "Accept:application/json" http://localhost:8083/connectors -X POST --data '{"name":"file-connector","config":{"connector.class":"org.apache.kafka.connect.file.FileStreamSourceConnector","file":"/var/log/access.log","tasks.max":"1","topic":"access_log"}}'

@@ -1,4 +1,4 @@
-## 集群同步
+## mirror maker
 ```sh
 # consumer.properties 的配置
 bootstrap.servers=cluster1:9092

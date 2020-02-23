@@ -1,9 +1,9 @@
 ## Kafka Connect
-Kafka Connect 为在 Kafka 和外部数据存储系统之间移动数据提供了一种可靠的且可伸缩的实现方式。可以简单快捷地将数据从 Kafka 中导入或导出，数据范围涵盖关系型数据库、日志和度量数据、Hadoop 和数据仓库、NoSQL 数据存储、搜索索引等
+Kafka Connect 为在 Kafka 和外部数据存储系统之间移动数据提供了一种可靠的且可伸缩的实现方式。可以简单快捷地将数据从 Kafka 中导入或导出。数据范围涵盖关系型数据库、日志和度量数据、Hadoop 和数据仓库、NoSQL 数据存储、搜索索引等
 
 Kafka Connect 有两个核心概念：Source 和 Sink。Source 负责导入数据到 Kafka，Sink 负责从 Kafka 导出数据，它们都被称为 Connector
 
-Kafka Connect 中还有两个重要的概念：Task 和 Worker。每一个 Connector 都会协调一系列的 Task 去执行任务，Connector 可以把一项工作分割成许多 Task，然后把 Task 分发到各个 Worker 进程中去执行（分布式模式下），Task 不保存自己的状态信息，而是交给特定的 Kafka 主题去保存。Connector 和 Task 都是逻辑工作单位，必须安排在进程中执行，而在 Kafka Connect 中，这些进程就是 Worker
+Kafka Connect 中还有两个重要的概念：Task 和 Worker。Connector 可以把一项工作分割成许多 Task，然后把 Task 分发到各个 Worker 进程中去执行（分布式模式下），Task 不保存自己的状态信息，而是交给特定的 Kafka 主题去保存。Connector 和 Task 都是逻辑工作单位，必须安排在进程中执行，而在 Kafka Connect 中，这些进程就是 Worker
 
 ### 特性
 1. 通用性：规范化其他数据系统与 Kafka 的集成，简化了连接器的开发、部署和管理
