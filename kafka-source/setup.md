@@ -1,3 +1,5 @@
+# 环境大家
+
 ```sh
 git clone https://github.com/apache/kafka.git
 
@@ -9,6 +11,7 @@ gradle
 ```
 
 ## 目录结构
+
 bin 目录：保存 Kafka 工具行脚本
 clients 目录：保存 Kafka 客户端代码
 config 目录：保存 Kafka 的配置文件
@@ -30,12 +33,13 @@ streams 目录：保存 Streams 组件的源代码
 ./gradlew streams:test
 ```
 
-单独对某一个具体的测试用例进行测试
 ```sh
+# 单独对某一个具体的测试用例进行测试
+
 ./gradlew core:test --tests kafka.log.LogTest
 ```
 
-构建整个 Kafka 工程并打包出一个可运行的二进制环境
 ```sh
+# 构建整个 Kafka 工程并打包出一个可运行的二进制环境
 ./gradlew clean releaseTarGz
 ```
