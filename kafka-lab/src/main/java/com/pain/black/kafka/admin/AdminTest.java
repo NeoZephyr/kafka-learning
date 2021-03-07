@@ -1,5 +1,6 @@
 package com.pain.black.kafka.admin;
 
+import com.pain.black.kafka.util.Constants;
 import org.apache.kafka.clients.admin.*;
 import org.apache.kafka.common.config.ConfigResource;
 
@@ -7,8 +8,6 @@ import java.util.*;
 import java.util.concurrent.ExecutionException;
 
 public class AdminTest {
-
-    private static final String BOOTSTRAP_SERVERS_CONFIG = "cdh:9092";
 
     public static void main(String[] args) throws ExecutionException, InterruptedException {
         // createTopic();
@@ -21,7 +20,7 @@ public class AdminTest {
 
     private static AdminClient createAdminClient() {
         Properties properties = new Properties();
-        properties.setProperty(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, BOOTSTRAP_SERVERS_CONFIG);
+        properties.setProperty(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, Constants.BOOTSTRAP_SERVERS_CONFIG);
         return AdminClient.create(properties);
     }
 
