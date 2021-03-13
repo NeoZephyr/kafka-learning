@@ -1,8 +1,11 @@
 package com.pain.black.kafka.admin;
 
+import ch.qos.logback.classic.Level;
+import ch.qos.logback.classic.Logger;
 import com.pain.black.kafka.util.Constants;
 import org.apache.kafka.clients.admin.*;
 import org.apache.kafka.common.config.ConfigResource;
+import org.slf4j.LoggerFactory;
 
 import java.util.*;
 import java.util.concurrent.ExecutionException;
@@ -10,10 +13,13 @@ import java.util.concurrent.ExecutionException;
 public class AdminTest {
 
     public static void main(String[] args) throws ExecutionException, InterruptedException {
-        // createTopic();
+        Logger logger = (Logger) LoggerFactory.getLogger("org.apache.kafka");
+        logger.setLevel(Level.INFO);
+        logger.setAdditive(false);
+        createTopic();
         // listTopic();
         // deleteTopic();
-        describeTopics();
+        // describeTopics();
         // describeConfig();
         // updatePartition();
     }
@@ -26,7 +32,7 @@ public class AdminTest {
 
     private static void createTopic() throws ExecutionException, InterruptedException {
         AdminClient adminClient = createAdminClient();
-        NewTopic topic = new NewTopic("test", 3, (short) 1);
+        NewTopic topic = new NewTopic(Constants.STREAM_OUT_TOPIC, 3, (short) 1);
         CreateTopicsResult topicsResult = adminClient.createTopics(Collections.singletonList(topic));
         System.out.println(topicsResult);
         topicsResult.all().get();

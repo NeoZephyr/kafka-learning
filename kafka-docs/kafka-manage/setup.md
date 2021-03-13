@@ -65,7 +65,7 @@ zookeeper.connect=node01:2181,node02:2181,node03:2181/kafka
 启动 kafka
 
 ```sh
-kafka-server-start.sh server.properties
+kafka-server-start.sh -daemon server.properties
 ```
 
 创建 topic
